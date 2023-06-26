@@ -1421,9 +1421,9 @@ public class SolidityFunctionWrapper extends Generator {
         // Create function that returns the ABI encoding of the Solidity function call.
         if (abiFuncs) {
             functionName = "getABI_" + functionName;
-            methodBuilder = MethodSpec.methodBuilder(functionName).addModifiers(Modifier.PUBLIC);
+            methodBuilder = MethodSpec.methodBuilder(functionName).addModifiers(Modifier.PUBLIC, Modifier.STATIC);
             addParameters(methodBuilder, functionDefinition.getInputs());
-            buildAbiFunction(functionDefinition, methodBuilder, inputParams, useUpperCase);
+            buildAbiFunction(functionDefinition, methodBuilder, inputParams, useUpperCase, outputParameterTypes);
             results.add(methodBuilder.build());
         }
 
@@ -1614,7 +1614,7 @@ public class SolidityFunctionWrapper extends Generator {
             AbiDefinition functionDefinition,
             MethodSpec.Builder methodBuilder,
             String inputParams,
-            boolean useUpperCase)
+            boolean useUpperCase, List<TypeName> outputParameterTypes)
             throws ClassNotFoundException {
 
         if (functionDefinition.isPayable()) {
@@ -1623,20 +1623,16 @@ public class SolidityFunctionWrapper extends Generator {
 
         String functionName = functionDefinition.getName();
 
-        methodBuilder.returns(TypeName.get(String.class));
+        methodBuilder.returns(TypeName.get(Function.class));
 
-        methodBuilder.addStatement(
-                "final $T function = new $T(\n$N, \n$T.<$T>asList($L), \n$T"
-                        + ".<$T<?>>emptyList())",
-                Function.class,
-                Function.class,
-                funcNameToConst(functionName, useUpperCase),
-                Arrays.class,
-                Type.class,
+        buildVariableLengthReturnFunctionConstructor(
+                methodBuilder,
+                functionName,
                 inputParams,
-                Collections.class,
-                TypeReference.class);
-        methodBuilder.addStatement("return org.web3j.abi.FunctionEncoder.encode(function)");
+                outputParameterTypes,
+                useUpperCase
+        );
+        methodBuilder.addStatement("return function");
     }
 
     TypeSpec buildEventResponseObject(
